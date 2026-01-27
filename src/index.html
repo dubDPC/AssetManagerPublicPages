@@ -1,0 +1,365 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AIFile - Secure Document Upload</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: #f0f2f5;
+            color: #1a1a2e;
+            min-height: 100vh;
+        }
+        .header {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 24px;
+            text-align: center;
+        }
+        .header h1 { font-size: 24px; font-weight: 600; }
+        .header p { opacity: 0.9; margin-top: 4px; font-size: 14px; }
+        .container {
+            max-width: 640px;
+            margin: 32px auto;
+            padding: 0 16px;
+        }
+        .card {
+            background: white;
+            border-radius: 12px;
+            padding: 32px;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+            margin-bottom: 20px;
+        }
+        .info-bar {
+            display: flex;
+            justify-content: space-between;
+            flex-wrap: wrap;
+            gap: 12px;
+            margin-bottom: 24px;
+            font-size: 14px;
+            color: #6b7280;
+        }
+        .info-bar strong { color: #1a1a2e; }
+        .dropzone {
+            border: 2px dashed #d1d5db;
+            border-radius: 8px;
+            padding: 48px 24px;
+            text-align: center;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+        .dropzone:hover, .dropzone.dragover {
+            border-color: #667eea;
+            background: #f5f3ff;
+        }
+        .dropzone-icon { font-size: 48px; margin-bottom: 12px; }
+        .dropzone-text { color: #6b7280; font-size: 14px; }
+        .dropzone-text strong { color: #667eea; }
+        .file-types { font-size: 12px; color: #9ca3af; margin-top: 8px; }
+        input[type="file"] { display: none; }
+        .file-list { margin-top: 20px; }
+        .file-item {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 12px;
+            background: #f9fafb;
+            border-radius: 6px;
+            margin-bottom: 8px;
+            font-size: 14px;
+        }
+        .file-item .name { flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+        .file-item .size { color: #9ca3af; margin: 0 12px; white-space: nowrap; }
+        .file-item .remove {
+            background: none; border: none; color: #ef4444; cursor: pointer;
+            font-size: 18px; padding: 0 4px;
+        }
+        .file-item .status { font-size: 12px; font-weight: 500; }
+        .file-item .status.success { color: #10b981; }
+        .file-item .status.error { color: #ef4444; }
+        .btn-upload {
+            width: 100%;
+            padding: 14px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border: none;
+            border-radius: 8px;
+            font-size: 16px;
+            font-weight: 600;
+            cursor: pointer;
+            margin-top: 20px;
+            transition: opacity 0.2s;
+        }
+        .btn-upload:hover { opacity: 0.9; }
+        .btn-upload:disabled { opacity: 0.5; cursor: not-allowed; }
+        .progress-bar {
+            height: 4px;
+            background: #e5e7eb;
+            border-radius: 2px;
+            margin-top: 16px;
+            overflow: hidden;
+            display: none;
+        }
+        .progress-bar .fill {
+            height: 100%;
+            background: linear-gradient(90deg, #667eea, #764ba2);
+            width: 0%;
+            transition: width 0.3s;
+        }
+        .message {
+            padding: 16px;
+            border-radius: 8px;
+            margin-top: 16px;
+            font-size: 14px;
+            display: none;
+        }
+        .message.success { background: #d1fae5; color: #065f46; display: block; }
+        .message.error { background: #fee2e2; color: #991b1b; display: block; }
+        .error-page {
+            text-align: center;
+            padding: 60px 20px;
+        }
+        .error-page .icon { font-size: 64px; margin-bottom: 16px; }
+        .error-page h2 { margin-bottom: 8px; }
+        .error-page p { color: #6b7280; }
+        .loading { text-align: center; padding: 60px; color: #6b7280; }
+        .footer {
+            text-align: center;
+            padding: 24px;
+            color: #9ca3af;
+            font-size: 12px;
+        }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <h1>AIFile</h1>
+        <p>Secure Document Upload</p>
+    </div>
+
+    <div class="container">
+        <div id="loading" class="card loading">Validating upload link...</div>
+
+        <div id="error-page" class="card error-page" style="display:none">
+            <div class="icon" id="error-icon"></div>
+            <h2 id="error-title"></h2>
+            <p id="error-text"></p>
+        </div>
+
+        <div id="upload-section" style="display:none">
+            <div class="card">
+                <div class="info-bar">
+                    <div>Welcome, <strong id="client-name"></strong></div>
+                    <div><strong id="remaining-count"></strong> uploads remaining</div>
+                </div>
+                <div class="info-bar">
+                    <div>Link expires: <strong id="expiry-date"></strong></div>
+                </div>
+
+                <div class="dropzone" id="dropzone" onclick="document.getElementById('fileInput').click()">
+                    <div class="dropzone-icon">&#128206;</div>
+                    <div class="dropzone-text">
+                        <strong>Click to browse</strong> or drag files here
+                    </div>
+                    <div class="file-types">PDF, JPEG, PNG, TIFF, DOCX (max 50MB each)</div>
+                </div>
+                <input type="file" id="fileInput" multiple
+                    accept=".pdf,.jpg,.jpeg,.png,.tiff,.tif,.docx">
+
+                <div class="file-list" id="fileList"></div>
+
+                <button class="btn-upload" id="uploadBtn" onclick="uploadFiles()" disabled>
+                    Upload Documents
+                </button>
+
+                <div class="progress-bar" id="progressBar">
+                    <div class="fill" id="progressFill"></div>
+                </div>
+
+                <div id="message"></div>
+            </div>
+        </div>
+    </div>
+
+    <div class="footer">
+        &copy; <script>document.write(new Date().getFullYear())</script> AIFile. Secure document upload.
+    </div>
+
+    <script>
+        let selectedFiles = [];
+        let tokenValue = '';
+        let remainingUploads = 0;
+
+        // Get token from URL
+        const params = new URLSearchParams(window.location.search);
+        tokenValue = params.get('token');
+
+        if (!tokenValue) {
+            showError('&#128683;', 'Invalid Link', 'No upload token provided. Please check the link from your email.');
+        } else {
+            validateToken();
+        }
+
+        async function validateToken() {
+            try {
+                const res = await fetch(`/api/validate-token?token=${encodeURIComponent(tokenValue)}`);
+                const data = await res.json();
+
+                document.getElementById('loading').style.display = 'none';
+
+                if (!res.ok) {
+                    const icons = { expired: '&#9203;', revoked: '&#128683;', limit_reached: '&#9989;' };
+                    const messages = {
+                        expired: 'This upload link has expired. Please contact your tax preparer for a new link.',
+                        revoked: 'This upload link is no longer active.',
+                        limit_reached: 'All available uploads have been used.'
+                    };
+                    const reason = data.reason || 'expired';
+                    showError(icons[reason] || '&#128683;', 'Link Unavailable', messages[reason] || data.error);
+                    return;
+                }
+
+                document.getElementById('client-name').textContent = data.clientName;
+                remainingUploads = data.remainingUploads;
+                document.getElementById('remaining-count').textContent = remainingUploads;
+                document.getElementById('expiry-date').textContent =
+                    new Date(data.expiresAt).toLocaleDateString('en-US', {
+                        year: 'numeric', month: 'long', day: 'numeric'
+                    });
+                document.getElementById('upload-section').style.display = 'block';
+            } catch (err) {
+                document.getElementById('loading').style.display = 'none';
+                showError('&#9888;', 'Connection Error', 'Unable to validate upload link. Please try again later.');
+            }
+        }
+
+        function showError(icon, title, text) {
+            document.getElementById('loading').style.display = 'none';
+            document.getElementById('error-icon').innerHTML = icon;
+            document.getElementById('error-title').textContent = title;
+            document.getElementById('error-text').textContent = text;
+            document.getElementById('error-page').style.display = 'block';
+        }
+
+        // Drag and drop
+        const dropzone = document.getElementById('dropzone');
+        dropzone.addEventListener('dragover', (e) => { e.preventDefault(); dropzone.classList.add('dragover'); });
+        dropzone.addEventListener('dragleave', () => dropzone.classList.remove('dragover'));
+        dropzone.addEventListener('drop', (e) => {
+            e.preventDefault();
+            dropzone.classList.remove('dragover');
+            addFiles(e.dataTransfer.files);
+        });
+
+        document.getElementById('fileInput').addEventListener('change', (e) => {
+            addFiles(e.target.files);
+            e.target.value = '';
+        });
+
+        function addFiles(fileList) {
+            for (const file of fileList) {
+                if (selectedFiles.length >= remainingUploads) {
+                    showMessage(`Maximum ${remainingUploads} files allowed`, 'error');
+                    break;
+                }
+                if (selectedFiles.some(f => f.name === file.name && f.size === file.size)) continue;
+                selectedFiles.push(file);
+            }
+            renderFileList();
+        }
+
+        function removeFile(index) {
+            selectedFiles.splice(index, 1);
+            renderFileList();
+        }
+
+        function renderFileList() {
+            const list = document.getElementById('fileList');
+            list.innerHTML = selectedFiles.map((f, i) => `
+                <div class="file-item" id="file-${i}">
+                    <span class="name">${f.name}</span>
+                    <span class="size">${formatSize(f.size)}</span>
+                    <button class="remove" onclick="removeFile(${i})">&times;</button>
+                </div>
+            `).join('');
+            document.getElementById('uploadBtn').disabled = selectedFiles.length === 0;
+        }
+
+        function formatSize(bytes) {
+            if (bytes < 1024) return bytes + ' B';
+            if (bytes < 1048576) return (bytes / 1024).toFixed(1) + ' KB';
+            return (bytes / 1048576).toFixed(1) + ' MB';
+        }
+
+        function showMessage(text, type) {
+            const msg = document.getElementById('message');
+            msg.className = 'message ' + type;
+            msg.textContent = text;
+        }
+
+        async function uploadFiles() {
+            const btn = document.getElementById('uploadBtn');
+            const bar = document.getElementById('progressBar');
+            const fill = document.getElementById('progressFill');
+
+            btn.disabled = true;
+            btn.textContent = 'Uploading...';
+            bar.style.display = 'block';
+            fill.style.width = '0%';
+
+            const formData = new FormData();
+            formData.append('token', tokenValue);
+            selectedFiles.forEach(f => formData.append('files', f));
+
+            try {
+                fill.style.width = '50%';
+                const res = await fetch('/api/upload', { method: 'POST', body: formData });
+                const data = await res.json();
+                fill.style.width = '100%';
+
+                if (!res.ok) {
+                    showMessage(data.error || 'Upload failed', 'error');
+                    btn.disabled = false;
+                    btn.textContent = 'Upload Documents';
+                    return;
+                }
+
+                // Update file statuses
+                data.results.forEach((result, i) => {
+                    const el = document.getElementById(`file-${i}`);
+                    if (!el) return;
+                    const removeBtn = el.querySelector('.remove');
+                    if (removeBtn) removeBtn.style.display = 'none';
+                    const status = document.createElement('span');
+                    status.className = 'status ' + (result.success ? 'success' : 'error');
+                    status.textContent = result.success ? 'Uploaded' : 'Failed';
+                    el.appendChild(status);
+                });
+
+                remainingUploads = data.remainingUploads;
+                document.getElementById('remaining-count').textContent = remainingUploads;
+
+                const successCount = data.results.filter(r => r.success).length;
+                showMessage(`${successCount} file(s) uploaded successfully!`, 'success');
+
+                selectedFiles = [];
+                if (remainingUploads > 0) {
+                    btn.textContent = 'Upload More Documents';
+                    btn.disabled = true;
+                } else {
+                    btn.textContent = 'All uploads used';
+                    btn.disabled = true;
+                    document.getElementById('dropzone').style.display = 'none';
+                }
+            } catch (err) {
+                fill.style.width = '0%';
+                showMessage('Upload failed. Please try again.', 'error');
+                btn.disabled = false;
+                btn.textContent = 'Upload Documents';
+            }
+        }
+    </script>
+</body>
+</html>
