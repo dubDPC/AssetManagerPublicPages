@@ -1,11 +1,7 @@
 {
-  "name": "aifile-upload-portal-api",
+  "name": "api",
   "version": "1.0.0",
-  "description": "Azure Functions backend for AIFile secure upload portal",
   "dependencies": {
-    "@azure/identity": "^4.0.0",
-    "@microsoft/microsoft-graph-client": "^3.0.0",
-    "mongoose": "^7.0.0",
-    "busboy": "^1.6.0"
+    "mongodb": "^6.0.0"
   }
 }
